@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: go vet ./...
+      # The c-shared build is the release artifact; failing here means a tag would fail too.
+      - name: Build shared library
+        env:
+          CGO_ENABLED: "1"
+        run: go build -buildmode=c-shared -o /tmp/plugin.so .
+      - name: Smoke test the C ABI
+        run: python3 scripts/smoke.py
